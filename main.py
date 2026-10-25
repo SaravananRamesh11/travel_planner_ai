@@ -142,6 +142,8 @@ graph.add_edge("final_agent", END)
 # Persistent connection so both CLI and Streamlit can share the compiled app.
 # Falls back to in-memory checkpointing if PostgreSQL is unreachable.
 try:
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL not set")
     _conn = psycopg.connect(DATABASE_URL, autocommit=True, connect_timeout=10)
     checkpointer = PostgresSaver(_conn)
     checkpointer.setup()

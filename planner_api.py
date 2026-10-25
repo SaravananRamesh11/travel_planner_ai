@@ -1,5 +1,6 @@
 # HTTP API for the React frontend.
-# Run with: uvicorn api:api --port 8010
+# Run with: uvicorn planner_api:api --port 8010
+# On Vercel it is served through api/index.py
 
 import json
 import os
@@ -16,7 +17,12 @@ from starlette.routing import Route
 
 from main import app as graph_app
 
-SAVE_DIR = os.path.join(os.path.dirname(__file__), "travel_plans")
+# Vercel's filesystem is read-only except /tmp
+SAVE_DIR = (
+    "/tmp/travel_plans"
+    if os.getenv("VERCEL")
+    else os.path.join(os.path.dirname(__file__), "travel_plans")
+)
 
 NODE_ORDER = ["flight_agent", "hotel_agent", "itinerary_agent", "final_agent"]
 
@@ -70,8 +76,11 @@ def _save_plan(query: str, user_id: str, collected: dict) -> str:
 ---
 *LLM Calls: {collected['llm_calls']}*
 """
-    with open(os.path.join(SAVE_DIR, filename), "w", encoding="utf-8") as f:
-        f.write(content)
+    try:
+        with open(os.path.join(SAVE_DIR, filename), "w", encoding="utf-8") as f:
+            f.write(content)
+    except OSError:
+        pass
     return filename
 
 
@@ -143,6 +152,7 @@ api = Starlette(
         Middleware(
             CORSMiddleware,
             allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+            allow_origin_regex=r"https://.*\.vercel\.app",
             allow_methods=["*"],
             allow_headers=["*"],
         )
